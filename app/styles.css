@@ -12,7 +12,9 @@
   /* Meter: one blue ramp, validated with the dataviz palette script. */
   --meter-fill: #256abf;
   --meter-track: #cde2fb;
-  --owned: #256abf;
+  /* Brass, from the coin alloy. Contrast: white check 5.05:1, as text on white 5.05:1. */
+  --owned: #8a6a1f;
+  --owned-ink: #ffffff;
   --radius: 12px;
   font-family: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   background: var(--surface);
@@ -30,7 +32,8 @@
     --accent-ink: #0d1626;
     --meter-fill: #3987e5;
     --meter-track: #104281;
-    --owned: #3987e5;
+    --owned: #d4a948;
+    --owned-ink: #1b1b1a;
   }
 }
 
@@ -72,7 +75,7 @@ img { max-width: 100%; }
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised);
 }
 .filters input { flex: 1 1 220px; }
-.filters output { margin-left: auto; color: var(--ink-2); font-size: .9rem; }
+.filters output { color: var(--ink-2); font-size: .9rem; white-space: nowrap; margin-right: 8px; }
 .link { background: none; border: 0; color: var(--ink-2); text-decoration: underline; cursor: pointer; padding: 4px; }
 
 main { padding: 16px; }
@@ -104,11 +107,21 @@ main { padding: 16px; }
 
 .toggle {
   position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border-radius: 50%;
-  border: 2px solid var(--line); background: var(--raised); color: transparent; cursor: pointer;
-  font-weight: 700; display: grid; place-items: center;
+  border: 2px solid var(--line); background: var(--raised); color: color-mix(in srgb, var(--ink-2) 45%, transparent);
+  cursor: pointer; font-weight: 700; display: grid; place-items: center;
 }
 .toggle:hover { border-color: var(--owned); color: var(--owned); }
-.toggle[aria-pressed="true"] { background: var(--owned); border-color: var(--owned); color: #fff; }
+.toggle[aria-pressed="true"] { background: var(--owned); border-color: var(--owned); color: var(--owned-ink); }
+/* Hint under the button: on hover (mouse) and keyboard focus. Touch taps toggle directly. */
+.toggle::after {
+  content: attr(data-hint); position: absolute; top: calc(100% + 6px); right: 0;
+  padding: 4px 8px; border-radius: 6px; background: var(--ink); color: var(--surface);
+  font-size: .75rem; font-weight: 400; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+}
+@media (hover: hover) { .toggle:hover::after { opacity: 1; } }
+.toggle:focus-visible::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toggle::after { transition: none; } }
 
 /* pager */
 .pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 20px 0 4px; }
@@ -159,7 +172,7 @@ main { padding: 16px; }
   padding: 8px 16px; border-radius: 999px; border: 2px solid var(--owned); background: none; color: var(--owned);
   cursor: pointer; font-weight: 600;
 }
-.toggle-large[aria-pressed="true"] { background: var(--owned); color: #fff; }
+.toggle-large[aria-pressed="true"] { background: var(--owned); color: var(--owned-ink); }
 .variants { list-style: none; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
 .variants a { display: grid; gap: 2px; justify-items: center; color: inherit; text-decoration: none; font-size: .75rem; text-align: center; }
 .variants img { width: 80px; height: 80px; object-fit: contain; }

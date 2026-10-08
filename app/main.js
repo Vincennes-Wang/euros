@@ -74,7 +74,6 @@ function syncControls() {
   $("q").value = state.q;
   $("year").value = state.year ?? "";
   $("country").value = state.country ?? "";
-  $("owned").value = state.owned;
 }
 
 const FILTER_KEYS = ["year", "country", "owned", "q"];
@@ -117,7 +116,7 @@ function paintOwned(id) {
   btn.setAttribute("aria-pressed", String(has));
   const label = has ? t("toggle.remove") : t("toggle.add");
   btn.setAttribute("aria-label", label);
-  btn.title = label;
+  btn.dataset.hint = label;
 }
 
 function render() {
@@ -131,6 +130,7 @@ function render() {
   $("grid").replaceChildren(...items.map((c) => cards.get(c.id)));
   $("count").textContent = t("count", { n: list.length });
   $("empty").hidden = list.length > 0;
+  $("reset").hidden = !(state.year || state.country || state.q);
   $("empty").textContent = state.owned === "owned" && owned.size === 0 ? t("empty.mine") : t("empty");
   renderPager(page, pages);
   renderViews();
@@ -357,7 +357,6 @@ function bindEvents() {
   });
   $("year").addEventListener("change", () => setState({ year: Number($("year").value) || null, coin: null }));
   $("country").addEventListener("change", () => setState({ country: $("country").value || null, coin: null }));
-  $("owned").addEventListener("change", () => setState({ owned: $("owned").value, coin: null }));
   $("reset").addEventListener("click", () => setState({ year: null, country: null, owned: "all", q: "", coin: null }));
   $("view-all").addEventListener("click", () => setState({ owned: "all", coin: null }));
   $("view-mine").addEventListener("click", () => setState({ owned: "owned", coin: null }));

@@ -24,6 +24,7 @@
 - Joint issues show the EU flag. Country filter includes joint issues (see below). Stats count each coin once (joint issues under `eu`).
 - Flags: `flags/*.svg` from flag-icons (MIT, `flags/LICENSE`).
 - Offline (`sw.js`): shell and `coins.json` stale-while-revalidate; thumbnails and flags precached (~7 MB); full images cached on first view. Bump the cache names in `sw.js` only when the caching scheme changes.
+- Owned state uses brass: light `#8a6a1f` (white check, 5.05:1), dark `#d4a948` (dark check, 7.85:1). Unowned coins stay in full color (user decision 2026-10-09).
 - Meter colors are validated with the dataviz palette script: light fill `#256abf` / track `#cde2fb`, dark fill `#3987e5` / track `#104281`.
 
 ## Layout

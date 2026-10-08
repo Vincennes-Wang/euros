@@ -40,7 +40,6 @@ test("year, owned and text filters combine", () => {
   const owned = new Set(["2004-gr-olympic-games-athens-2004"]);
   assert.equal(filterCoins(coins, { year: 2004 }, none).length, 6);
   assert.deepEqual(filterCoins(coins, { year: 2004, owned: "owned" }, owned).map((c) => c.id), [...owned]);
-  assert.equal(filterCoins(coins, { year: 2004, owned: "missing" }, owned).length, 5);
   assert.deepEqual(filterCoins(coins, { year: 2004, q: "athens olympic" }, none).map((c) => c.id), ["2004-gr-olympic-games-athens-2004"]);
   // Search matches Chinese descriptions and localized country names.
   assert.ok(filterCoins(coins, { q: "梵蒂冈" }, none).length > 0);
@@ -81,10 +80,10 @@ test("exportCollection round-trips through mergeImport", () => {
 });
 
 test("hash state round-trips", () => {
-  const state = { year: 2015, country: "fr", owned: "missing", q: "rome 条约", page: 3, coin: null };
+  const state = { year: 2015, country: "fr", owned: "owned", q: "rome 条约", page: 3, coin: null };
   assert.deepEqual(parseHash(buildHash(state)), state);
   assert.equal(buildHash({ owned: "all", page: 1 }), "");
-  assert.deepEqual(parseHash("#year=abc&owned=bogus&page=-2"),
+  assert.deepEqual(parseHash("#year=abc&owned=missing&page=-2"),
     { year: null, country: null, owned: "all", q: "", page: 1, coin: null });
 });
 

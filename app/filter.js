@@ -21,7 +21,7 @@ function normalize(s) {
 /**
  * Filter coins.
  * @param {object[]} coins
- * @param {{year?: number|null, country?: string|null, owned?: "all"|"owned"|"missing", q?: string}} f
+ * @param {{year?: number|null, country?: string|null, owned?: "all"|"owned", q?: string}} f
  * @param {Set<string>} owned
  * @param {(code: string) => string} countryName  localized name, used by the text search
  */
@@ -32,7 +32,6 @@ export function filterCoins(coins, f, owned, countryName = (c) => c) {
     if (f.year && c.year !== f.year) return false;
     if (f.country && !coinCountries(c).includes(f.country)) return false;
     if (f.owned === "owned" && !owned.has(c.id)) return false;
-    if (f.owned === "missing" && owned.has(c.id)) return false;
     if (terms.length) {
       const hay = normalize(
         [c.id, c.title, c.description_en, c.description_zh, c.country, countryName(c.country_code)].join(" "),
@@ -122,7 +121,7 @@ export function pageNumbers(current, pages) {
 export function parseHash(hash) {
   const p = new URLSearchParams(hash.replace(/^#/, ""));
   const year = Number(p.get("year")) || null;
-  const owned = ["owned", "missing"].includes(p.get("owned")) ? p.get("owned") : "all";
+  const owned = p.get("owned") === "owned" ? "owned" : "all";
   const page = Math.max(1, Math.floor(Number(p.get("page"))) || 1);
   return { year, country: p.get("country") || null, owned, q: p.get("q") || "", page, coin: p.get("coin") || null };
 }

@@ -28,15 +28,10 @@
 
   <form id="filters" class="filters" role="search" onsubmit="return false">
     <input id="q" type="search" autocomplete="off" data-i18n-attr="placeholder:filter.search,aria-label:filter.search">
+    <output id="count" aria-live="polite"></output>
     <select id="year" data-i18n-attr="aria-label:filter.year"></select>
     <select id="country" data-i18n-attr="aria-label:filter.country"></select>
-    <select id="owned" data-i18n-attr="aria-label:filter.owned">
-      <option value="all" data-i18n="filter.owned.all"></option>
-      <option value="owned" data-i18n="filter.owned.owned"></option>
-      <option value="missing" data-i18n="filter.owned.missing"></option>
-    </select>
-    <button id="reset" type="button" class="link" data-i18n="filter.reset"></button>
-    <output id="count" aria-live="polite"></output>
+    <button id="reset" type="button" class="link" hidden data-i18n="filter.reset"></button>
   </form>
 
   <main>
