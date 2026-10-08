@@ -96,12 +96,35 @@ export function exportCollection(owned, now = new Date()) {
   return { source: "euros-pwa", exported_at: now.toISOString().replace(/\.\d+Z$/, "Z"), owned: [...owned].sort() };
 }
 
+export const PAGE_SIZE = 48; // divisible by 2, 3, 4 and 6 columns
+
+/** Slice one page; an out-of-range page is clamped. */
+export function paginate(list, page, size = PAGE_SIZE) {
+  const pages = Math.max(1, Math.ceil(list.length / size));
+  const current = Math.min(Math.max(1, page || 1), pages);
+  return { items: list.slice((current - 1) * size, current * size), page: current, pages };
+}
+
+/** Page buttons to show: first, last, and current ± 1, with null for gaps. */
+export function pageNumbers(current, pages) {
+  const keep = new Set([1, pages, current - 1, current, current + 1].filter((n) => n >= 1 && n <= pages));
+  const out = [];
+  for (const n of [...keep].sort((a, b) => a - b)) {
+    const prev = out[out.length - 1];
+    if (prev != null && n - prev === 2) out.push(n - 1); // a gap of one page: show it instead of "…"
+    else if (prev != null && n - prev > 2) out.push(null);
+    out.push(n);
+  }
+  return out;
+}
+
 /** URL hash <-> view state. */
 export function parseHash(hash) {
   const p = new URLSearchParams(hash.replace(/^#/, ""));
   const year = Number(p.get("year")) || null;
   const owned = ["owned", "missing"].includes(p.get("owned")) ? p.get("owned") : "all";
-  return { year, country: p.get("country") || null, owned, q: p.get("q") || "", coin: p.get("coin") || null };
+  const page = Math.max(1, Math.floor(Number(p.get("page"))) || 1);
+  return { year, country: p.get("country") || null, owned, q: p.get("q") || "", page, coin: p.get("coin") || null };
 }
 
 export function buildHash(state) {
@@ -110,6 +133,7 @@ export function buildHash(state) {
   if (state.country) p.set("country", state.country);
   if (state.owned && state.owned !== "all") p.set("owned", state.owned);
   if (state.q) p.set("q", state.q);
+  if (state.page > 1) p.set("page", state.page);
   if (state.coin) p.set("coin", state.coin);
   const s = p.toString();
   return s ? `#${s}` : "";

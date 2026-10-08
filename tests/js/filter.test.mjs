@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  buildHash, coinCountries, exportCollection, filterCoins, mergeImport, parseHash, sortCoins, stats, thumbPath,
+  buildHash, coinCountries, exportCollection, filterCoins, mergeImport, pageNumbers, paginate, PAGE_SIZE, parseHash,
+  sortCoins, stats, thumbPath,
 } from "../../app/filter.js";
 
 const coins = JSON.parse(readFileSync(new URL("../../data/coins.json", import.meta.url)));
@@ -80,8 +81,27 @@ test("exportCollection round-trips through mergeImport", () => {
 });
 
 test("hash state round-trips", () => {
-  const state = { year: 2015, country: "fr", owned: "missing", q: "rome 条约", coin: null };
+  const state = { year: 2015, country: "fr", owned: "missing", q: "rome 条约", page: 3, coin: null };
   assert.deepEqual(parseHash(buildHash(state)), state);
-  assert.equal(buildHash({ owned: "all" }), "");
-  assert.deepEqual(parseHash("#year=abc&owned=bogus"), { year: null, country: null, owned: "all", q: "", coin: null });
+  assert.equal(buildHash({ owned: "all", page: 1 }), "");
+  assert.deepEqual(parseHash("#year=abc&owned=bogus&page=-2"),
+    { year: null, country: null, owned: "all", q: "", page: 1, coin: null });
+});
+
+test("paginate slices pages and clamps out-of-range pages", () => {
+  assert.equal(PAGE_SIZE, 48);
+  const p1 = paginate(coins, 1);
+  assert.deepEqual([p1.items.length, p1.page, p1.pages], [48, 1, 11]);
+  const last = paginate(coins, 11);
+  assert.equal(last.items.length, 504 - 480);
+  assert.equal(paginate(coins, 99).page, 11);
+  assert.deepEqual(paginate([], 3), { items: [], page: 1, pages: 1 });
+});
+
+test("pageNumbers shows first, last, neighbours and gaps", () => {
+  assert.deepEqual(pageNumbers(1, 1), [1]);
+  assert.deepEqual(pageNumbers(1, 11), [1, 2, null, 11]);
+  assert.deepEqual(pageNumbers(6, 11), [1, null, 5, 6, 7, null, 11]);
+  assert.deepEqual(pageNumbers(3, 11), [1, 2, 3, 4, null, 11]);
+  assert.deepEqual(pageNumbers(4, 5), [1, 2, 3, 4, 5]);
 });

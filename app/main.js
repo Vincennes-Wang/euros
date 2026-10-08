@@ -1,5 +1,6 @@
 import {
-  buildHash, coinCountries, exportCollection, filterCoins, JOINT, mergeImport, parseHash, sortCoins, stats, thumbPath,
+  buildHash, coinCountries, exportCollection, filterCoins, JOINT, mergeImport, pageNumbers, paginate, parseHash,
+  sortCoins, stats, thumbPath,
 } from "./filter.js";
 import {
   applyI18n, coinText, countryName, formatDate, formatNumber, getLocale, localeName, LOCALES, setLocale, t,
@@ -76,7 +77,11 @@ function syncControls() {
   $("owned").value = state.owned;
 }
 
+const FILTER_KEYS = ["year", "country", "owned", "q"];
+
 function setState(patch, { replace = false } = {}) {
+  // Any filter change starts again at page 1.
+  if (!("page" in patch) && FILTER_KEYS.some((k) => k in patch && patch[k] !== state[k])) patch = { ...patch, page: 1 };
   state = { ...state, ...patch };
   const hash = buildHash(state) || location.pathname + location.search;
   if (replace) history.replaceState(null, "", hash);
@@ -118,9 +123,17 @@ function paintOwned(id) {
 function render() {
   syncControls();
   const list = filterCoins(coins, state, owned, countryName);
-  $("grid").replaceChildren(...list.map((c) => cards.get(c.id)));
+  const { items, page, pages } = paginate(list, state.page);
+  if (page !== state.page) {
+    state.page = page; // clamped, e.g. after un-owning the last coin of the last page
+    history.replaceState(null, "", buildHash(state) || location.pathname + location.search);
+  }
+  $("grid").replaceChildren(...items.map((c) => cards.get(c.id)));
   $("count").textContent = t("count", { n: list.length });
   $("empty").hidden = list.length > 0;
+  $("empty").textContent = state.owned === "owned" && owned.size === 0 ? t("empty.mine") : t("empty");
+  renderPager(page, pages);
+  renderViews();
   renderProgress();
   if (state.coin && byId.has(state.coin)) {
     if (!$("detail").open || detailCoin?.id !== state.coin) openDetail(byId.get(state.coin));
@@ -128,8 +141,55 @@ function render() {
   else if ($("detail").open) $("detail").close();
 }
 
+function renderPager(page, pages) {
+  const nav = $("pager");
+  nav.hidden = pages <= 1;
+  if (nav.hidden) return nav.replaceChildren();
+  const button = (label, target, attrs = {}) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.dataset.page = target;
+    for (const [k, v] of Object.entries(attrs)) b.setAttribute(k, v);
+    return b;
+  };
+  const edge = (label, target, disabled) =>
+    button(label === "prev" ? "‹" : "›", target, { "aria-label": t(`pager.${label}`), ...(disabled ? { disabled: "" } : {}) });
+  const parts = [edge("prev", page - 1, page === 1)];
+  for (const n of pageNumbers(page, pages)) {
+    if (n == null) {
+      const gap = document.createElement("span");
+      gap.className = "gap";
+      gap.textContent = "…";
+      parts.push(gap);
+    } else {
+      parts.push(button(String(n), n, {
+        "aria-label": t("pager.page", { n }),
+        ...(n === page ? { "aria-current": "page" } : {}),
+      }));
+    }
+  }
+  parts.push(edge("next", page + 1, page === pages));
+  const status = document.createElement("span");
+  status.className = "pager-status";
+  status.textContent = t("pager.status", { page, pages });
+  parts.push(status);
+  nav.replaceChildren(...parts);
+}
+
+function ownedCount() {
+  return coins.reduce((n, c) => n + (owned.has(c.id) ? 1 : 0), 0);
+}
+
+function renderViews() {
+  const mine = state.owned === "owned";
+  $("view-all").setAttribute("aria-pressed", String(!mine));
+  $("view-mine").setAttribute("aria-pressed", String(mine));
+  $("view-mine").textContent = t("view.mine", { n: ownedCount() });
+}
+
 function renderProgress() {
-  const n = owned.size ? coins.filter((c) => owned.has(c.id)).length : 0;
+  const n = ownedCount();
   $("progress-text").textContent = t("progress", { owned: n, total: coins.length });
   $("progress-fill").style.width = `${(n / coins.length) * 100}%`;
 }
@@ -144,7 +204,10 @@ async function toggleOwned(id) {
 function refreshOwned(id) {
   for (const key of id ? [id] : cards.keys()) paintOwned(key);
   if (state.owned !== "all") render();
-  else renderProgress();
+  else {
+    renderProgress();
+    renderViews();
+  }
   if ($("detail").open) paintDetailToggle();
   if ($("stats").open) renderStats();
 }
@@ -296,6 +359,14 @@ function bindEvents() {
   $("country").addEventListener("change", () => setState({ country: $("country").value || null, coin: null }));
   $("owned").addEventListener("change", () => setState({ owned: $("owned").value, coin: null }));
   $("reset").addEventListener("click", () => setState({ year: null, country: null, owned: "all", q: "", coin: null }));
+  $("view-all").addEventListener("click", () => setState({ owned: "all", coin: null }));
+  $("view-mine").addEventListener("click", () => setState({ owned: "owned", coin: null }));
+  $("pager").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-page]");
+    if (!b || b.disabled) return;
+    setState({ page: Number(b.dataset.page), coin: null });
+    window.scrollTo({ top: 0 });
+  });
 
   $("grid").addEventListener("click", (e) => {
     const li = e.target.closest(".card");

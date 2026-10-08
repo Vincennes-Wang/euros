@@ -19,6 +19,10 @@
       <span id="progress-text"></span>
       <span class="meter" aria-hidden="true"><span id="progress-fill"></span></span>
     </button>
+    <nav class="views" data-i18n-attr="aria-label:view.label">
+      <button id="view-all" type="button" aria-pressed="true" data-i18n="view.all"></button>
+      <button id="view-mine" type="button" aria-pressed="false"></button>
+    </nav>
     <select id="locale" hidden aria-label="Language"></select>
   </header>
 
@@ -38,7 +42,8 @@
   <main>
     <p id="status" class="status" role="status"></p>
     <ul id="grid" class="grid"></ul>
-    <p id="empty" class="status" hidden data-i18n="empty"></p>
+    <p id="empty" class="status" hidden></p>
+    <nav id="pager" class="pager" hidden data-i18n-attr="aria-label:pager.label"></nav>
   </main>
 
   <footer class="foot">

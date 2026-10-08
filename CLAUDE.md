@@ -20,6 +20,7 @@
 - GitHub Pages serves the repo root of `main` (`.nojekyll`). All paths are relative; the site lives under `/euros/`.
 - UI language: Chinese only for now. All UI strings live in `app/i18n.js`; adding a locale = adding one dictionary. Coin text uses `<field>_<locale>` and falls back to English with a visible note.
 - Collection storage: `localStorage` key `euros.collection.v1`, shape `{owned: [id], updated_at}` (same `owned` shape as export files and `private/collection.json`). Only `app/store.js` touches storage, through `load`/`save`/`subscribe`, so a remote backend with accounts can replace it later.
+- Grid is paginated, 48 coins per page (`PAGE_SIZE` in `app/filter.js`); page is in the URL hash; filter changes reset to page 1. Header toggle "全部硬币 / 我的收藏" sets the owned filter.
 - Joint issues show the EU flag. Country filter includes joint issues (see below). Stats count each coin once (joint issues under `eu`).
 - Flags: `flags/*.svg` from flag-icons (MIT, `flags/LICENSE`).
 - Offline (`sw.js`): shell and `coins.json` stale-while-revalidate; thumbnails and flags precached (~7 MB); full images cached on first view. Bump the cache names in `sw.js` only when the caching scheme changes.
