@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>€2 纪念币收藏</title>
+  <meta name="description" content="欧元 €2 纪念币收藏清单（数据来源：欧洲中央银行）">
+  <meta name="theme-color" content="#1c3f8a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="app/styles.css">
+  <script type="module" src="app/main.js"></script>
+</head>
+<body>
+  <header class="top">
+    <h1 data-i18n="app.title">€2 纪念币收藏</h1>
+    <button id="stats-open" class="progress" type="button" aria-haspopup="dialog">
+      <span id="progress-text"></span>
+      <span class="meter" aria-hidden="true"><span id="progress-fill"></span></span>
+    </button>
+    <select id="locale" hidden aria-label="Language"></select>
+  </header>
+
+  <form id="filters" class="filters" role="search" onsubmit="return false">
+    <input id="q" type="search" autocomplete="off" data-i18n-attr="placeholder:filter.search,aria-label:filter.search">
+    <select id="year" data-i18n-attr="aria-label:filter.year"></select>
+    <select id="country" data-i18n-attr="aria-label:filter.country"></select>
+    <select id="owned" data-i18n-attr="aria-label:filter.owned">
+      <option value="all" data-i18n="filter.owned.all"></option>
+      <option value="owned" data-i18n="filter.owned.owned"></option>
+      <option value="missing" data-i18n="filter.owned.missing"></option>
+    </select>
+    <button id="reset" type="button" class="link" data-i18n="filter.reset"></button>
+    <output id="count" aria-live="polite"></output>
+  </form>
+
+  <main>
+    <p id="status" class="status" role="status"></p>
+    <ul id="grid" class="grid"></ul>
+    <p id="empty" class="status" hidden data-i18n="empty"></p>
+  </main>
+
+  <footer class="foot">
+    <div class="actions">
+      <button id="export" type="button" data-i18n="data.export"></button>
+      <label class="button">
+        <span data-i18n="data.import"></span>
+        <input id="import" type="file" accept="application/json,.json" hidden>
+      </label>
+    </div>
+    <p data-i18n="footer.privacy"></p>
+    <p><span data-i18n="footer.source"></span> <a href="https://www.ecb.europa.eu/euro/coins/comm/html/index.en.html" rel="noopener">ecb.europa.eu</a></p>
+    <p data-i18n="footer.flags"></p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <dialog id="detail" class="sheet" aria-labelledby="d-title">
+    <button type="button" class="close" data-close data-i18n-attr="aria-label:detail.close">×</button>
+    <div class="detail">
+      <img id="d-image" class="coin-large" alt="">
+      <div class="detail-body">
+        <p class="meta"><img id="d-flag" class="flag" alt=""> <span id="d-country"></span> · <span id="d-year"></span></p>
+        <h2 id="d-title"></h2>
+        <button id="d-toggle" type="button" class="toggle-large" aria-pressed="false"></button>
+        <dl class="facts">
+          <dt data-i18n="detail.volume"></dt><dd id="d-volume"></dd>
+          <dt data-i18n="detail.date"></dt><dd id="d-date"></dd>
+        </dl>
+        <h3 data-i18n="detail.description"></h3>
+        <p id="d-fallback" class="note" hidden data-i18n="detail.english_only"></p>
+        <p id="d-description"></p>
+        <section id="d-variants" hidden>
+          <h3 id="d-variants-title"></h3>
+          <p class="note" data-i18n="detail.joint_note"></p>
+          <ul id="d-variant-list" class="variants"></ul>
+        </section>
+        <p><a id="d-source" rel="noopener" target="_blank" data-i18n="detail.source"></a></p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="stats" class="sheet" aria-labelledby="s-title">
+    <button type="button" class="close" data-close data-i18n-attr="aria-label:detail.close">×</button>
+    <h2 id="s-title" data-i18n="stats.title"></h2>
+    <p class="hero"><span id="s-owned"></span><span class="hero-total"> / <span id="s-total"></span></span></p>
+    <span class="meter meter-wide" aria-hidden="true"><span id="s-fill"></span></span>
+    <p class="note" data-i18n="stats.filter_hint"></p>
+    <h3 data-i18n="stats.by_country"></h3>
+    <table class="stats-table" id="s-country"></table>
+    <h3 data-i18n="stats.by_year"></h3>
+    <table class="stats-table" id="s-year"></table>
+  </dialog>
+
+  <template id="card-tpl">
+    <li class="card">
+      <button type="button" class="card-open">
+        <img class="thumb" loading="lazy" decoding="async" alt="" width="256" height="256">
+        <span class="card-meta"><img class="flag" alt="" width="20" height="15"> <span class="card-country"></span> · <span class="card-year"></span></span>
+        <span class="card-title"></span>
+      </button>
+      <button type="button" class="toggle" aria-pressed="false"><span aria-hidden="true">✓</span></button>
+    </li>
+  </template>
+
+  <noscript><p class="status">This app needs JavaScript. / 本应用需要启用 JavaScript。</p></noscript>
+</body>
+</html>

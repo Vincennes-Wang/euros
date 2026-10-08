@@ -14,10 +14,24 @@
 - Collection status (which coins the user owns) is private. It lives in `private/collection.json`, never in `data/`.
 - The future PWA keeps collection status on the device (e.g. localStorage/IndexedDB), with import/export of the same JSON shape. Do not publish it.
 
+## Front end
+
+- No framework, no build step, no npm dependencies: plain HTML, ES modules, CSS. What is in `main` is what Pages serves.
+- GitHub Pages serves the repo root of `main` (`.nojekyll`). All paths are relative; the site lives under `/euros/`.
+- UI language: Chinese only for now. All UI strings live in `app/i18n.js`; adding a locale = adding one dictionary. Coin text uses `<field>_<locale>` and falls back to English with a visible note.
+- Collection storage: `localStorage` key `euros.collection.v1`, shape `{owned: [id], updated_at}` (same `owned` shape as export files and `private/collection.json`). Only `app/store.js` touches storage, through `load`/`save`/`subscribe`, so a remote backend with accounts can replace it later.
+- Joint issues show the EU flag. Country filter includes joint issues (see below). Stats count each coin once (joint issues under `eu`).
+- Flags: `flags/*.svg` from flag-icons (MIT, `flags/LICENSE`).
+- Offline (`sw.js`): shell and `coins.json` stale-while-revalidate; thumbnails and flags precached (~7 MB); full images cached on first view. Bump the cache names in `sw.js` only when the caching scheme changes.
+- Meter colors are validated with the dataviz palette script: light fill `#256abf` / track `#cde2fb`, dark fill `#3987e5` / track `#104281`.
+
 ## Layout
 
 | Path | Content |
 |---|---|
+| `index.html`, `app/` | PWA: `main.js` (DOM), `filter.js` (pure logic), `i18n.js`, `store.js`, `styles.css` |
+| `sw.js`, `manifest.webmanifest`, `icons/` | Service worker, manifest, app icons |
+| `scripts/make_thumbs.py` | 256 px WebP thumbnails: `data/images/...jpg` → `data/thumbs/...webp` |
 | `scraper/ecb.py` | Pure parsing: page → coin dicts, volume/date parsing, slugs |
 | `scraper/scrape.py` | CLI: fetch pages, archive HTML, download images, write `data/coins.json` |
 | `scripts/migrate_legacy.py` | xlsx → `description_zh` and `private/collection.json` |
@@ -33,8 +47,12 @@ uv run --with-requirements scraper/requirements.txt python -m scraper.scrape    
 uv run --with-requirements scraper/requirements.txt python -m scraper.scrape --offline  # re-parse data/raw only
 uv run --with-requirements scraper/requirements.txt python scripts/migrate_legacy.py
 uv run --with-requirements scraper/requirements.txt python scripts/validate.py
+uv run --with-requirements scraper/requirements.txt python scripts/make_thumbs.py     # after every scrape
 uv run --with-requirements scraper/requirements.txt python -m pytest -q tests
+node --test tests/js/                                                                  # front-end logic
 ```
+
+Local preview under the same path as Pages: serve a directory that contains a symlink `euros -> <repo>` with `python3 -m http.server`, then open `http://127.0.0.1:8000/euros/`.
 
 System Python is 3.9 without bs4; always run through `uv`.
 
@@ -55,7 +73,7 @@ System Python is 3.9 without bs4; always run through `uv`.
 | `country_code` | string | ISO 3166-1 alpha-2, lowercase (`gr` for Greece); `eu` for joint issues |
 | `title` | string | ECB "Feature" |
 | `description_en` | string | ECB "Description" |
-| `description_zh` | string \| null | From legacy xlsx; scraper preserves it |
+| `description_zh` | string \| null | 371 from the legacy xlsx (cached Google Translate); the rest translated by Claude on 2026-10-08. The scraper preserves it; new coins need a translation pass. |
 | `volume_raw` / `volume` | string / int \| null | `volume` null when not a single number |
 | `issue_date_raw` / `issue_date` | string / string \| null | `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` (quarters, seasons, ranges) |
 | `image` | string \| null | Local path relative to repo root |

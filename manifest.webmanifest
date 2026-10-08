@@ -1,0 +1,16 @@
+{
+  "name": "€2 纪念币收藏",
+  "short_name": "€2 收藏",
+  "description": "欧元 €2 纪念币收藏清单",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fcfcfb",
+  "theme_color": "#1c3f8a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
