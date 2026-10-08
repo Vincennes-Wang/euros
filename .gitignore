@@ -1,0 +1,6 @@
+legacy/
+private/
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
