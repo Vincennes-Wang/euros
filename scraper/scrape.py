@@ -4,6 +4,7 @@ Usage:
     python -m scraper.scrape                 # fetch all years, update data/
     python -m scraper.scrape --years 2024 2025
     python -m scraper.scrape --offline       # re-parse data/raw only, no network
+    python -m scraper.scrape --strict        # exit 1 on any warning, archive fallback or image failure
 
 Incremental: unchanged coins keep their bytes and scraped_at; existing images are
 not downloaded again unless their source URL changed.
@@ -85,14 +86,14 @@ def same_page(a: str, b: str) -> bool:
     return VOLATILE_RE.sub("", a) == VOLATILE_RE.sub("", b)
 
 
-def get_page(fetcher: Fetcher | None, year: int) -> str | None:
-    """Fetch a year page and archive it. Fall back to data/raw if the fetch fails."""
+def get_page(fetcher: Fetcher | None, year: int, warnings: list[str]) -> str | None:
+    """Fetch a year page and archive it. Fall back to data/raw (with a warning) if the fetch fails."""
     raw_path = RAW / f"comm_{year}.en.html"
     if fetcher:
         try:
             resp = fetcher.get(ecb.page_url(year))
         except requests.RequestException as exc:
-            print(f"  {year}: fetch failed ({exc}); using archive", file=sys.stderr)
+            warnings.append(f"{year}: fetch failed ({exc}); used archive")
         else:
             if resp.status_code == 404:
                 return None
@@ -103,7 +104,7 @@ def get_page(fetcher: Fetcher | None, year: int) -> str | None:
                     write_if_changed(raw_path, resp.text.encode("utf-8"))
                     print(f"  {year}: raw HTML saved")
                 return resp.text
-            print(f"  {year}: HTTP {resp.status_code}; using archive", file=sys.stderr)
+            warnings.append(f"{year}: HTTP {resp.status_code}; used archive")
     return raw_path.read_bytes().decode("utf-8") if raw_path.exists() else None
 
 
@@ -143,7 +144,7 @@ def image_ext(url: str) -> str:
     return "jpg" if ext == "jpeg" else ext
 
 
-def download(fetcher: Fetcher | None, url: str, path: Path, force: bool) -> bool:
+def download(fetcher: Fetcher | None, url: str, path: Path, force: bool, warnings: list[str]) -> bool:
     """Download url to path unless present. Return False if the file is missing afterwards."""
     if path.exists() and not force:
         return True
@@ -152,24 +153,24 @@ def download(fetcher: Fetcher | None, url: str, path: Path, force: bool) -> bool
     try:
         resp = fetcher.get(url)
     except requests.RequestException as exc:
-        print(f"  image failed: {url} ({exc})", file=sys.stderr)
+        warnings.append(f"image failed: {url} ({exc})")
         return path.exists()
     if not resp.ok or not resp.headers.get("Content-Type", "").startswith("image/"):
-        print(f"  image failed: {url} (HTTP {resp.status_code}, {resp.headers.get('Content-Type')})", file=sys.stderr)
+        warnings.append(f"image failed: {url} (HTTP {resp.status_code}, {resp.headers.get('Content-Type')})")
         return path.exists()
     write_if_changed(path, resp.content)
     print(f"  image saved: {path.relative_to(ROOT)}")
     return True
 
 
-def attach_images(fetcher: Fetcher | None, coin: dict, old: dict | None) -> None:
+def attach_images(fetcher: Fetcher | None, coin: dict, old: dict | None, warnings: list[str]) -> None:
     year_dir = IMAGES / str(coin["year"])
     src = coin["image_source_url"]
     coin["image"] = None
     if src:
         path = year_dir / f"{coin['id']}.{image_ext(src)}"
         changed = bool(old) and old.get("image_source_url") != src
-        if download(fetcher, src, path, force=changed):
+        if download(fetcher, src, path, changed, warnings):
             coin["image"] = path.relative_to(ROOT).as_posix()
     sources = coin.pop("variant_image_sources", None)
     if sources is None:
@@ -179,7 +180,7 @@ def attach_images(fetcher: Fetcher | None, coin: dict, old: dict | None) -> None
     for key, url in sources.items():
         path = year_dir / coin["id"] / f"{key}.{image_ext(url)}"
         changed = key in old_variants and old_variants[key].get("image_source_url") != url
-        local = download(fetcher, url, path, force=changed)
+        local = download(fetcher, url, path, changed, warnings)
         variants[key] = {"image": path.relative_to(ROOT).as_posix() if local else None, "image_source_url": url}
     coin["variant_images"] = variants
 
@@ -195,6 +196,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--years", type=int, nargs="*", help="only these years (default: all)")
     parser.add_argument("--offline", action="store_true", help="parse data/raw only; no network")
+    parser.add_argument("--strict", action="store_true",
+                        help="exit 1 on any warning, archive fallback, dropped coin or failed image")
     args = parser.parse_args(argv)
 
     fetcher = None if args.offline else Fetcher()
@@ -210,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     scraped: dict[int, list[dict]] = {}
     warnings: list[str] = []
     for year in years:
-        html = get_page(fetcher, year)
+        html = get_page(fetcher, year, warnings)
         if html is None:
             if not args.years and year > datetime.now(timezone.utc).year - 1:
                 continue  # future year not published yet
@@ -224,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         result = []
         for coin in coins:
             old = old_by_id.get(coin["id"])
-            attach_images(fetcher, coin, old)
+            attach_images(fetcher, coin, old, warnings)
             result.append(finalize(coin, old, timestamp))
         removed = sorted(set(old_by_id) - {c["id"] for c in result})
         for rid in removed:
@@ -245,6 +248,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"coins.json {'updated' if write_if_changed(COINS_JSON, data) else 'unchanged'}: {len(out)} coins")
     for w in warnings:
         print(f"WARNING {w}", file=sys.stderr)
+    if args.strict and warnings:
+        print(f"strict: {len(warnings)} warning(s); failing", file=sys.stderr)
+        return 1
     return 0
 
 
