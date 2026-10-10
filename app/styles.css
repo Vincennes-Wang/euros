@@ -103,6 +103,10 @@ main { padding: 16px; }
 .card-title {
   font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
+.card-stars { margin-top: auto; font-size: .8rem; }
+/* Rarity: neutral ink, so it never reads as the brass "owned" state. */
+.stars { color: var(--ink-2); letter-spacing: 1px; white-space: nowrap; }
+.stars .off { color: color-mix(in srgb, var(--ink-2) 30%, transparent); }
 .flag { width: 20px; height: 15px; border-radius: 2px; box-shadow: 0 0 0 1px var(--line); flex: none; }
 
 .toggle {

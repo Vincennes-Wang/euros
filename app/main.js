@@ -1,5 +1,6 @@
 import {
   buildHash, coinCountries, exportCollection, filterCoins, JOINT, mergeImport, pageNumbers, paginate, parseHash,
+  rarityStars,
   sortCoins, stats, thumbPath,
 } from "./filter.js";
 import {
@@ -68,15 +69,37 @@ function buildFilterOptions() {
     new Option(countryName(JOINT), JOINT),
     ...codes.map((c) => new Option(countryName(c), c)),
   );
+
+  $("stars").replaceChildren(
+    new Option(t("filter.all_stars"), ""),
+    ...[5, 4, 3, 2, 1].map((n) => new Option(t("stars.option", { n, stars: "★".repeat(n) }), n)),
+  );
+}
+
+/** Five stars, the first n filled; null when the coin has no rating. */
+function starsElement(n) {
+  if (n == null) return null;
+  const el = document.createElement("span");
+  el.className = "stars";
+  el.setAttribute("role", "img");
+  el.setAttribute("aria-label", t("stars.label", { n }));
+  const on = document.createElement("span");
+  on.textContent = "★".repeat(n);
+  const off = document.createElement("span");
+  off.className = "off";
+  off.textContent = "★".repeat(5 - n);
+  el.append(on, off);
+  return el;
 }
 
 function syncControls() {
   $("q").value = state.q;
   $("year").value = state.year ?? "";
   $("country").value = state.country ?? "";
+  $("stars").value = state.stars ?? "";
 }
 
-const FILTER_KEYS = ["year", "country", "owned", "q"];
+const FILTER_KEYS = ["year", "country", "stars", "owned", "q"];
 
 function setState(patch, { replace = false } = {}) {
   // Any filter change starts again at page 1.
@@ -102,6 +125,9 @@ function buildCards() {
     li.querySelector(".card-country").textContent = countryName(coin.country_code);
     li.querySelector(".card-year").textContent = coin.year;
     li.querySelector(".card-title").textContent = title;
+    const stars = starsElement(rarityStars(coin.volume));
+    if (stars) li.querySelector(".card-stars").append(stars);
+    else li.querySelector(".card-stars").remove();
     li.querySelector(".card-open").setAttribute("aria-label", t("card.open", { title }));
     cards.set(coin.id, li);
     paintOwned(coin.id);
@@ -130,7 +156,7 @@ function render() {
   $("grid").replaceChildren(...items.map((c) => cards.get(c.id)));
   $("count").textContent = t("count", { n: list.length });
   $("empty").hidden = list.length > 0;
-  $("reset").hidden = !(state.year || state.country || state.q);
+  $("reset").hidden = !(state.year || state.country || state.stars || state.q);
   $("empty").textContent = state.owned === "owned" && owned.size === 0 ? t("empty.mine") : t("empty");
   renderPager(page, pages);
   renderViews();
@@ -229,6 +255,15 @@ function openDetail(coin) {
   $("d-volume").textContent = coin.volume != null
     ? formatNumber(coin.volume)
     : coin.is_joint_issue ? t("detail.volume_varies") : coin.volume_raw ?? "";
+  const stars = starsElement(rarityStars(coin.volume));
+  if (stars) {
+    const note = document.createElement("span");
+    note.className = "note";
+    note.textContent = t("detail.rarity_note");
+    $("d-rarity").replaceChildren(stars, " ", note);
+  } else {
+    $("d-rarity").textContent = t("detail.rarity_none");
+  }
   const date = formatDate(coin.issue_date);
   const preciseRaw = /^(\d{1,2} )?[A-Z][a-z]+ \d{4}$/.test(coin.issue_date_raw ?? "");
   $("d-date").textContent = coin.issue_date_raw && !preciseRaw ? `${date}（${coin.issue_date_raw}）` : date;
@@ -357,7 +392,9 @@ function bindEvents() {
   });
   $("year").addEventListener("change", () => setState({ year: Number($("year").value) || null, coin: null }));
   $("country").addEventListener("change", () => setState({ country: $("country").value || null, coin: null }));
-  $("reset").addEventListener("click", () => setState({ year: null, country: null, owned: "all", q: "", coin: null }));
+  $("stars").addEventListener("change", () => setState({ stars: Number($("stars").value) || null, coin: null }));
+  $("reset").addEventListener("click", () =>
+    setState({ year: null, country: null, stars: null, owned: "all", q: "", coin: null }));
   $("view-all").addEventListener("click", () => setState({ owned: "all", coin: null }));
   $("view-mine").addEventListener("click", () => setState({ owned: "owned", coin: null }));
   $("pager").addEventListener("click", (e) => {

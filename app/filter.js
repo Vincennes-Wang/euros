@@ -14,6 +14,19 @@ export function coinCountries(coin) {
   return [JOINT, ...new Set(codes)];
 }
 
+/**
+ * Rarity estimate from the issuing volume (our rule, not ECB data).
+ * Lower bound inclusive: <100k 5, <300k 4, <1M 3, <10M 2, else 1. No volume: null.
+ */
+export function rarityStars(volume) {
+  if (volume == null) return null;
+  if (volume < 100_000) return 5;
+  if (volume < 300_000) return 4;
+  if (volume < 1_000_000) return 3;
+  if (volume < 10_000_000) return 2;
+  return 1;
+}
+
 function normalize(s) {
   return (s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "");
 }
@@ -21,7 +34,7 @@ function normalize(s) {
 /**
  * Filter coins.
  * @param {object[]} coins
- * @param {{year?: number|null, country?: string|null, owned?: "all"|"owned", q?: string}} f
+ * @param {{year?: number|null, country?: string|null, stars?: number|null, owned?: "all"|"owned", q?: string}} f
  * @param {Set<string>} owned
  * @param {(code: string) => string} countryName  localized name, used by the text search
  */
@@ -31,6 +44,7 @@ export function filterCoins(coins, f, owned, countryName = (c) => c) {
   return coins.filter((c) => {
     if (f.year && c.year !== f.year) return false;
     if (f.country && !coinCountries(c).includes(f.country)) return false;
+    if (f.stars && rarityStars(c.volume) !== f.stars) return false;
     if (f.owned === "owned" && !owned.has(c.id)) return false;
     if (terms.length) {
       const hay = normalize(
@@ -121,15 +135,19 @@ export function pageNumbers(current, pages) {
 export function parseHash(hash) {
   const p = new URLSearchParams(hash.replace(/^#/, ""));
   const year = Number(p.get("year")) || null;
+  const stars = Number(p.get("stars"));
   const owned = p.get("owned") === "owned" ? "owned" : "all";
   const page = Math.max(1, Math.floor(Number(p.get("page"))) || 1);
-  return { year, country: p.get("country") || null, owned, q: p.get("q") || "", page, coin: p.get("coin") || null };
+  return {
+    year, country: p.get("country") || null, stars: [1, 2, 3, 4, 5].includes(stars) ? stars : null, owned, q: p.get("q") || "", page, coin: p.get("coin") || null,
+  };
 }
 
 export function buildHash(state) {
   const p = new URLSearchParams();
   if (state.year) p.set("year", state.year);
   if (state.country) p.set("country", state.country);
+  if (state.stars) p.set("stars", state.stars);
   if (state.owned && state.owned !== "all") p.set("owned", state.owned);
   if (state.q) p.set("q", state.q);
   if (state.page > 1) p.set("page", state.page);

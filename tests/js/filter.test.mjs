@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 import {
   buildHash, coinCountries, exportCollection, filterCoins, mergeImport, pageNumbers, paginate, PAGE_SIZE, parseHash,
-  sortCoins, stats, thumbPath,
+  rarityStars, sortCoins, stats, thumbPath,
 } from "../../app/filter.js";
 
 const coins = JSON.parse(readFileSync(new URL("../../data/coins.json", import.meta.url)));
@@ -80,11 +80,13 @@ test("exportCollection round-trips through mergeImport", () => {
 });
 
 test("hash state round-trips", () => {
-  const state = { year: 2015, country: "fr", owned: "owned", q: "rome 条约", page: 3, coin: null };
+  const state = { year: 2015, country: "fr", stars: 4, owned: "owned", q: "rome 条约", page: 3, coin: null };
   assert.deepEqual(parseHash(buildHash(state)), state);
   assert.equal(buildHash({ owned: "all", page: 1 }), "");
-  assert.deepEqual(parseHash("#year=abc&owned=missing&page=-2"),
-    { year: null, country: null, owned: "all", q: "", page: 1, coin: null });
+  assert.deepEqual(parseHash("#year=abc&owned=missing&page=-2&stars=6"),
+    { year: null, country: null, stars: null, owned: "all", q: "", page: 1, coin: null });
+  assert.equal(parseHash("#stars=0").stars, null);
+  assert.equal(parseHash("#stars=2.5").stars, null);
 });
 
 test("paginate slices pages and clamps out-of-range pages", () => {
@@ -103,4 +105,24 @@ test("pageNumbers shows first, last, neighbours and gaps", () => {
   assert.deepEqual(pageNumbers(6, 11), [1, null, 5, 6, 7, null, 11]);
   assert.deepEqual(pageNumbers(3, 11), [1, 2, 3, 4, null, 11]);
   assert.deepEqual(pageNumbers(4, 5), [1, 2, 3, 4, 5]);
+});
+
+test("rarityStars maps volume to 1-5 stars, lower bound inclusive", () => {
+  const cases = [
+    [0, 5], [1, 5], [99999, 5],
+    [100000, 4], [299999, 4],
+    [300000, 3], [999999, 3],
+    [1000000, 2], [9999999, 2],
+    [10000000, 1], [30000000, 1],
+    [null, null], [undefined, null],
+  ];
+  for (const [volume, stars] of cases) assert.equal(rarityStars(volume), stars, `volume ${volume}`);
+});
+
+test("star filter matches rated coins only", () => {
+  const counts = [1, 2, 3, 4, 5].map((s) => filterCoins(coins, { stars: s }, none).length);
+  assert.deepEqual(counts, [55, 171, 129, 69, 75]);
+  assert.equal(counts.reduce((a, b) => a + b), 499, "504 coins minus 5 joint issues without a volume");
+  assert.ok(filterCoins(coins, { stars: 2 }, none).every((c) => c.volume >= 1e6 && c.volume < 1e7));
+  assert.ok(!filterCoins(coins, { stars: 1 }, none).some((c) => c.is_joint_issue));
 });

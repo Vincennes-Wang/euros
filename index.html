@@ -31,6 +31,7 @@
     <output id="count" aria-live="polite"></output>
     <select id="year" data-i18n-attr="aria-label:filter.year"></select>
     <select id="country" data-i18n-attr="aria-label:filter.country"></select>
+    <select id="stars" data-i18n-attr="aria-label:filter.stars"></select>
     <button id="reset" type="button" class="link" hidden data-i18n="filter.reset"></button>
   </form>
 
@@ -66,6 +67,7 @@
         <button id="d-toggle" type="button" class="toggle-large" aria-pressed="false"></button>
         <dl class="facts">
           <dt data-i18n="detail.volume"></dt><dd id="d-volume"></dd>
+          <dt data-i18n="detail.rarity"></dt><dd id="d-rarity"></dd>
           <dt data-i18n="detail.date"></dt><dd id="d-date"></dd>
         </dl>
         <h3 data-i18n="detail.description"></h3>
@@ -99,6 +101,7 @@
         <img class="thumb" loading="lazy" decoding="async" alt="" width="256" height="256">
         <span class="card-meta"><img class="flag" alt="" width="20" height="15"> <span class="card-country"></span> · <span class="card-year"></span></span>
         <span class="card-title"></span>
+        <span class="card-stars"></span>
       </button>
       <button type="button" class="toggle" aria-pressed="false"><span aria-hidden="true">✓</span></button>
     </li>
