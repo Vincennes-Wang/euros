@@ -1,0 +1,76 @@
+# Monthly ECB scrape. Any failing step stops the job before the commit step.
+# Every successful run commits data/last_checked.txt, so the schedule never
+# hits GitHub's 60-day inactivity cut-off.
+name: Monthly scrape
+
+on:
+  schedule:
+    - cron: "17 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: monthly-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      UV_RUN: uv run --with-requirements scraper/requirements.txt python
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Record ids before
+        run: jq -r '.[].id' data/coins.json | sort > "$RUNNER_TEMP/ids_before.txt"
+
+      - name: Scrape (strict)
+        run: $UV_RUN -m scraper.scrape --strict
+
+      - name: Thumbnails
+        run: $UV_RUN scripts/make_thumbs.py
+
+      - name: Validate
+        run: $UV_RUN scripts/validate.py
+
+      - name: Python tests
+        run: $UV_RUN -m pytest -q tests
+
+      - name: JS tests
+        run: node --test tests/js/*.test.mjs
+
+      - name: Commit and push
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%SZ > data/last_checked.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "Monthly scrape $(cat data/last_checked.txt)"
+          git push
+
+      - name: Open issue for new coins
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -r '.[].id' data/coins.json | sort > "$RUNNER_TEMP/ids_after.txt"
+          comm -13 "$RUNNER_TEMP/ids_before.txt" "$RUNNER_TEMP/ids_after.txt" > "$RUNNER_TEMP/new_ids.txt"
+          n=$(wc -l < "$RUNNER_TEMP/new_ids.txt" | tr -d ' ')
+          if [ "$n" -gt 0 ]; then
+            {
+              echo "本月抓取发现 $n 枚新币，description_zh 为空，需要翻译："
+              echo
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/new_ids.txt"
+            } > "$RUNNER_TEMP/issue.md"
+            gh issue create --title "新纪念币待翻译：${n} 枚" --body-file "$RUNNER_TEMP/issue.md"
+          else
+            echo "No new coins."
+          fi

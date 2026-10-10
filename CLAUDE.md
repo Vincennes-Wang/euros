@@ -88,17 +88,20 @@
 | `data/coins.json` | Public dataset, one object per coin, ordered by year then ECB page order |
 | `data/images/{year}/{id}.{ext}` | Coin images; joint-issue variants in `data/images/{year}/{id}/{key}.{ext}` |
 | `data/raw/comm_{year}.en.html` | Archived ECB pages, used as fallback when the ECB is unreachable |
+| `data/last_checked.txt` | UTC time of the last successful monthly run |
+| `.github/workflows/monthly-scrape.yml` | Monthly scrape, commit, new-coin issue |
 
 ## Commands
 
 ```sh
 uv run --with-requirements scraper/requirements.txt python -m scraper.scrape            # all years
 uv run --with-requirements scraper/requirements.txt python -m scraper.scrape --offline  # re-parse data/raw only
+uv run --with-requirements scraper/requirements.txt python -m scraper.scrape --strict   # exit 1 on any problem (CI)
 uv run --with-requirements scraper/requirements.txt python scripts/migrate_legacy.py
 uv run --with-requirements scraper/requirements.txt python scripts/validate.py
 uv run --with-requirements scraper/requirements.txt python scripts/make_thumbs.py     # after every scrape
 uv run --with-requirements scraper/requirements.txt python -m pytest -q tests
-node --test tests/js/                                                                  # front-end logic
+node --test tests/js/*.test.mjs                                                        # front-end logic (Node 22 needs the glob)
 ```
 
 Local preview under the same path as Pages: serve a directory that contains a symlink `euros -> <repo>` with `python3 -m http.server`, then open `http://127.0.0.1:8000/euros/`.
@@ -111,6 +114,15 @@ System Python is 3.9 without bs4; always run through `uv`.
 - One coin per `main div.box`. Country from its `<h3>`.
 - 2 s delay between requests; User-Agent names the project and repo URL.
 - Incremental: a coin keeps its bytes and `scraped_at` unless a content field changed. Images download only when missing or when their source URL changed.
+
+## Monthly update (`.github/workflows/monthly-scrape.yml`)
+
+- Runs at 06:17 UTC on the 1st of each month, and on demand (Actions → Monthly scrape → Run workflow).
+- Steps: `scrape --strict` → `make_thumbs.py` → `validate.py` → pytest → `node --test tests/js/*.test.mjs`. Any failure stops the job: nothing is committed.
+- `--strict` exits 1 on any WARNING, including: a year page that fell back to `data/raw` (fetch error or non-200/404), a dropped coin, a failed image download. Default mode still exits 0. `--offline` reading `data/raw` is not a fallback.
+- On success it writes `data/last_checked.txt` (UTC) and commits `data/` as `github-actions[bot]`. The monthly commit keeps the schedule alive (GitHub disables schedules after 60 days without activity).
+- New ids (diff before/after) open an issue "新纪念币待翻译：N 枚" listing them. New coins have `description_zh: null` until a translation pass.
+- Permissions: `contents: write`, `issues: write` only.
 
 ## Data schema (`data/coins.json`)
 
